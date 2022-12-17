@@ -133,8 +133,6 @@ int main(){
         a_a[i]=z[i*n];
         /* code */
     }
-    
-    
 
     matrix_trans(n,n,z);
     struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 3.1 D_1",.length=n,.inputFile="A2_3_1.txt"};
