@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "mynumerikbib.h": "c",
+        "__locale": "c",
+        "__string": "c"
+    },
+    "C_Cpp.errorSquiggles": "Enabled"
+}

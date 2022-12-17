@@ -1,0 +1,12 @@
+set grid 
+#Aktivierung des Gitters im Plot
+set zeroaxis 
+#Ursprung wird auf x=0 und y=0 gesetzt
+set xlabel "Zeit-Achse"
+ #Achsenbeschriftung
+set ylabel "Fehler-Achse" 
+#Achsenbeschriftung
+set title "Fehlernormen" 
+plot "Euler_semi_implizit_Fehler.txt" using 1:2 title "|y_t_2-y_t|/|y_t|" with lp 
+replot "Euler_semi_implizit_Fehler.txt" using 1:3 title "|y_t|" with lp 
+#plot-Befehl: plot 'Euler_semi_implizit_Fehler.txt' (Dateiname, aus der Daten stammen) title 'Legende' (Befehl zu Änderung #der Legende) with lp (with linepoints: Daten sollen mit Linien (l) und Punkten(p) dargestellt werden) 

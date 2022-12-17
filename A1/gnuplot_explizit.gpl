@@ -1,0 +1,9 @@
+set grid 
+#Aktivierung des Gitters im Plot
+set zeroaxis 
+set xlabel "Zeit-Achse"
+set ylabel "Konzentrationen-Achse" 
+set title "Euler explizit" 
+plot "Euler_explizit.txt" using 1:2 title "c_A" with l 
+replot "Euler_explizit.txt" using 1:3 title "c_B" with l 
+replot "Euler_explizit.txt" using 1:4 title "c_C" with l 

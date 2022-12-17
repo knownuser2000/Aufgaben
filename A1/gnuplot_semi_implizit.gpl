@@ -1,0 +1,13 @@
+set grid 
+#Aktivierung des Gitters im Plot
+set zeroaxis 
+#Ursprung wird auf x=0 und y=0 gesetzt
+set xlabel "Zeit-Achse"
+ #Achsenbeschriftung
+set ylabel "Konzentrationen-Achse" 
+#Achsenbeschriftung
+set title "Euler semi implizit" 
+plot "Euler_semi_implizit.txt" using 1:2 title "c_A" with l
+replot "Euler_semi_implizit.txt" using 1:3 title "c_B" with l 
+replot "Euler_semi_implizit.txt" using 1:4 title "c_C" with l 
+#plot-Befehl: plot 'Euler_semi_implizit.txt' (Dateiname, aus der Daten stammen) title 'Legende' (Befehl zu Änderung #der Legende) with lp (with linepoints: Daten sollen mit Linien (l) und Punkten(p) dargestellt werden) 

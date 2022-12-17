@@ -1,0 +1,10 @@
+set grid 
+#Aktivierung des Gitters im Plot
+set zeroaxis 
+#Ursprung wird auf x=0 und y=0 gesetzt
+set xlabel "x-Achse"
+ #Achsenbeschriftung
+set ylabel "y-Achse" 
+#Achsenbeschriftung
+plot "test.txt" title "Legende" with lp 
+#plot-Befehl: plot 'test.txt' (Dateiname, aus der Daten stammen) title 'Legende' (Befehl zu Änderung #der Legende) with lp (with linepoints: Daten sollen mit Linien (l) und Punkten(p) dargestellt werden) 

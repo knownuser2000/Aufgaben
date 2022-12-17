@@ -1,0 +1,407 @@
+/*
+#include "MyNumerikBib.h"
+#include "gnuplot.h"
+
+struct mydata
+{
+    int n;              //Anz. der Gleichungen
+    int m;              //Anz. der Parameter
+    double N_m;
+    double N_p;
+    double V_r;
+    double tmin;
+    double tmax;
+    double h;           //Schrittweite
+    double n_i;         //Zähler n_i=(tmax-tmin)/h
+    double rho_m;       //[kg/m3]
+    double rho_p;       //[kg/m3]
+    double MW;          //[kg/kmol]
+    double k;           //[1/min]
+    double V_r_Max;     //[m3]
+    double V_zu;        //[m3/min]
+    double V_r_0;       //[m3]
+    double *y;
+};
+
+struct mydata b;
+
+//Modell 1 ODE  Zustand 1
+void fcn1(int n, double *x,double *f){
+ f[0]= b.V_zu*b.rho_m/b.MW - b.k*x[0];       
+ f[1]= b.k*x[0];
+ f[2]= b.V_zu + b.k*b.MW*x[0]*(1/b.rho_p - 1/b.rho_m);
+}
+
+//Modell 1 DAE INDEX 1  Zustand 2
+void fcn3(int n, double *x,double *f){//x[2] definieren als b.V_zu
+ f[0]= x[2]*b.rho_m/b.MW - b.k*x[0];       
+ f[1]= b.k*x[0];
+ f[2]= x[2] + b.k*b.MW*x[0]*(1/b.rho_p - 1/b.rho_m);
+}
+
+//Modell 2 DAE INDEX 1  Zustand 1
+void fcn2(int n, double *x,double *f){
+ f[0]= b.V_zu*b.rho_m/b.MW - b.k*x[0];       
+ f[1]= b.k*x[0];
+ f[2]= b.V_r_0-x[2] + b.MW*(x[0]/b.rho_m + x[1]/b.rho_p);
+}
+
+//Modell 2 DAE INDEX 1  Zustand 2
+void fcn4(int n, double *x,double *f){
+ f[0]= x[2]*b.rho_m/b.MW - b.k*x[0];       
+ f[1]= b.k*x[0];
+ f[2]= b.MW*(f[0]/b.rho_m + f[1]/b.rho_p);
+ //b.V_r_0-x[2] + b.MW*(x[0]/b.rho_m + x[1]/b.rho_p);
+}
+//Modell 2 DAE INDEX 2  
+//Vergleichen mit Integration von M2 DAE1 Z2, f[2]=
+void fcn5(int n, double *x,double *f){
+ f[0]=0;
+ f[1]=0;
+ f[2]= -b.V_r_Max + b.V_r_0 + b.MW*(x[0]/b.rho_m + x[1]/b.rho_p);
+ //nach V_r umgestellt
+}
+
+void readFile(struct mydata *b){ 
+    FILE *fd1;
+    fd1 = fopen("rrdat.sec","r");
+    fscanf(fd1, "%i %i", &b->n, &b->m);
+    b->y=calloc(b->n, sizeof(double));
+    fscanf(fd1, "%lf", &b->y[0]);
+    fscanf(fd1, "%lf", &b->y[1]);
+    fscanf(fd1, "%lf", &b->y[2]);
+    fscanf(fd1, "%lf %lf %lf %lf", &b->tmin, &b->tmax, &b->h, &b->n_i);
+    fscanf(fd1, "%lf", &b->rho_m);
+    fscanf(fd1, "%lf", &b->rho_p);
+    fscanf(fd1, "%lf", &b->MW);
+    fscanf(fd1, "%lf", &b->k);
+    fscanf(fd1, "%lf", &b->V_r_Max);
+    fscanf(fd1, "%lf", &b->V_zu);
+    fscanf(fd1, "%lf", &b->V_r_0);
+    fclose(fd1);
+
+}
+
+//Erstelle Matrix mit Spalte 1=Zeit, Spalte 2,3,4:Konzentrationen
+void Matrix_t_c(int n, int x, int j_t, double *z,double *V_zuflus, double *Z_,double *t_1){
+    if (x<3)
+    {
+        for(int i=0;i<j_t+1;i++){
+            Z_[i*(n+1)]=t_1[i];         //Spalte 1=Zeit
+            Z_[i*(n+1)+1]=z[i*n];       //Spalte 2: N_m
+            Z_[i*(n+1)+2]=z[i*n+1];     //Spalte 3: N_p
+            Z_[i*(n+1)+3]=z[i*n+2];     //Spalte 4: V_r
+        }
+    }else
+    {
+        for(int i=0;i<j_t+1;i++){
+            Z_[i*(n+2)]=t_1[i];         //Spalte 1=Zeit
+            Z_[i*(n+2)+1]=z[i*n];       //Spalte 2: N_m
+            Z_[i*(n+2)+2]=z[i*n+1];     //Spalte 3: N_p
+            Z_[i*(n+2)+3]=z[i*n+2];     //Spalte 4: V_r
+            Z_[i*(n+2)+4]=V_zuflus[i];  //Spalte 1=Zeit
+        }
+    }
+}
+
+void writeFile(int n,int x,double *z_, double n_i, char *dateiname1){
+    FILE *fd1;
+    fd1 = fopen(dateiname1,"w");
+    if (x<3)
+    {
+        fprintf(fd1, "#t\t\t\t\t#N_m\t\t\t\t#N_p\t\t\t\t#V_r\n");
+        for(int i=0;i<(n+1)*(n_i+1);i=i+n+1)
+        {
+        fprintf(fd1, "%e\t%e\t%e\t%e\n", z_[i],z_[i+1],z_[i+2],z_[i+3]); //z_[i]=N_m,z_[i+1]=N_p,z_[i+2]=V_r
+        }
+    }else
+    {
+        fprintf(fd1, "#t\t\t\t\t#N_m\t\t\t\t#N_p\t\t\t\t#V_r\t\t\t\t#V_zufluss\n");
+        for(int i=0;i<(n+2)*(n_i+1);i=i+n+2)
+        {
+        fprintf(fd1, "%e\t%e\t%e\t%e\t%e\n", z_[i],z_[i+1],z_[i+2],z_[i+3],z_[i+4]); //z_[i]=N_m,z_[i+1]=N_p,z_[i+2]=V_r
+        }
+    }
+    
+    fclose(fd1);
+}
+*/
+/*
+int main(){
+    
+    readFile(&b); 
+    int j_t=0;
+    int z_counter=0;
+    //für ODE das semi impizierte reinhauen und gut ist es
+    double *t_1;
+    double B[9]={1,0,0, 0,1,0, 0,0,0};
+    double *z;
+
+    int Anzahl=1;
+    int x=1;
+    int y=1;
+  
+    //printf("Euler-Verfahren\n");
+    //printf("Geben sie für Aufgabe…\n\t\t2.1:  1\n\t\t2.2: 2\n\t\t2.3: 3… ein\n");
+    //scanf("%i", &x);
+    //printf("Geben sie für Modell\n\teins:  1\n\tund für Modell zwei: 2 ein.\n");
+    //scanf("%i", &y);
+
+   
+    double *Z_;         //Gesamtmatrix    
+    double *V_zuflus;   //wichtig für Matrix und aufgabe 4
+
+    if (x==1)       //Aufgabe 1
+    {   t_1=calloc(b.n_i+1,sizeof(double));   //Zeitvektor, mit teilschritten
+        z=calloc(b.n*b.n_i+b.n,sizeof(double));
+        if (y==1)   //Modell 1
+        {
+            B[8]=1;
+            euler_SI(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn2);
+        }else       //Modell 2
+        {
+            B[8]=0;
+            euler_SI(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn2);
+            //dae_semi_implizit_Index_1(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn2);
+        }
+        Z_=calloc((j_t+z_counter),sizeof(double));
+
+    }else if (x==2) //Aufgabe 2
+    {
+    t_1=calloc((Anzahl+1)*b.n_i+1,sizeof(double));
+    z=calloc((Anzahl+1)*b.n*b.n_i+b.n,sizeof(double));
+
+        if (y==1) //Modell 1
+        {
+            B[8]=1;
+            euler_SI_dense_output(b.n,Anzahl,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn1);
+        }else   //Modell 2
+        {
+            B[8]=0;
+            euler_SI_dense_output(b.n,Anzahl,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn2);
+        }
+    Z_=calloc((j_t+z_counter),sizeof(double));
+    }else       //Aufgabe 3
+    {
+    t_1=calloc(b.n_i+1,sizeof(double));   //Zeitvektor, mit teilschritten
+    z=calloc(b.n*b.n_i+b.n,sizeof(double));
+        if (y==1) //Modell 1
+        {
+            B[8]=1;
+            euler_SI_DO_abbruch(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.V_r_Max,b.y,z,fcn1);
+        }else   //Modell 2
+        {
+            B[8]=0;
+            euler_SI_DO_abbruch(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.V_r_Max,b.y,z,fcn2);
+        }
+        //Beide Modelle brechen ab wenn sie 20m^3 erreichen
+        for (int i = 0; i < b.n; i++)
+        {
+            printf("y[%i]=%lf\n",i,b.y[i]);
+        }
+        printf("t[%i]=%lf\n",j_t+1,t_1[j_t+1]);
+
+        b.y[b.n-1]=b.V_zu;  //neuer 
+        int j_t2;           //Anzahl Zeitschritte vor Regelung
+        int z_counter_2;    //Anzahl y_werte vor Regelung
+        j_t2=j_t;
+        z_counter_2= z_counter;
+        B[8]=0;
+
+        //und wechseln die funktion
+        if (y==1)   //Modell 1
+        {
+            euler_SI(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn3);
+        }else       //Modell 2
+        {
+    //void euler_SI_DAE_In_2(int n, int *j_t, int *z_counter, double delta_T, double *B, double *t,double tmax, double ymax, double *y_i, double *z, void(fcn)(int, double*,double*)){
+        euler_SI_DAE_In_2(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.V_r_Max,b.y,z,fcn4);
+            //euler_SI(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn2);
+        }
+        Z_=calloc((j_t+z_counter),sizeof(double));
+        V_zuflus=calloc(j_t,sizeof(double));
+        for(int i=0;i<j_t2;i++){
+            V_zuflus[i]=1;
+        }
+
+        for(int i=0;i<j_t-j_t2+1;i++){
+            V_zuflus[j_t2 +i]=z[z_counter_2 + i*b.n +2];
+            z[z_counter_2 + i*b.n +2]=z[z_counter_2-1];
+        }
+    }
+    Matrix_t_c(b.n,x,j_t,z,V_zuflus,Z_,t_1);   
+
+    double *NP, *NM, *V_r;
+    NP=calloc(j_t+1,sizeof(double));
+    NM=calloc(j_t+1,sizeof(double));
+    V_r=calloc(j_t+1,sizeof(double));
+
+    for(int i=0;i<(j_t+1);i++){
+        NM[i]=Z_[i*(b.n+1)+1];
+        NP[i]=Z_[i*(b.n+1)+2];
+        V_r[i]=Z_[i*(b.n+1)+3];
+        }
+    char *legende[]={"N_m", "N_p", "V_r"};
+    if (x==1)
+    {
+        if (y==1)
+        {
+        struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 1 Modell 1",.length=j_t+1,.inputFile="A2_1_1.txt"};
+        gnuplot(plot, legende, t_1,3, NM, NP, V_r);
+        
+        }else
+        {
+        struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 1 Modell 2",.length=j_t+1,.inputFile="A2_1_2.txt"};
+        gnuplot(plot, legende, t_1,3, NM, NP, V_r);        
+        }
+    }else if (x==2)
+    {
+        if (y==1)
+        {
+        struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 2 Modell 1",.length=j_t+1,.inputFile="A2_2_1.txt"};
+        gnuplot(plot, legende, t_1,3, NM, NP, V_r);        
+        }else
+        {
+        struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 2 Modell 2",.length=j_t+1,.inputFile="A2_2_2.txt"};
+        gnuplot(plot, legende, t_1,3, NM, NP, V_r);        
+        }
+
+    }else{
+        for(int i=0;i<(j_t+1);i++){
+        NM[i]=Z_[i*(b.n+2)+1];
+        NP[i]=Z_[i*(b.n+2)+2];
+        V_r[i]=Z_[i*(b.n+2)+3];
+        }
+        char *legende1[]={ "V^+"};
+        if (y==1)
+        {
+        struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 3 Modell 1",.length=j_t+1,.inputFile="A2_3_1.txt"};
+        gnuplot_multi_y(plot,legende,legende1,t_1,3,1,NM,NP,V_r,V_zuflus);        
+        }else
+        {
+        struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 3 Modell 1",.length=j_t+1,.inputFile="A2_3_2.txt"};
+        gnuplot_multi_y(plot,legende,legende1,t_1,3,1,NM,NP,V_r,V_zuflus);
+
+        }
+    }
+    
+*/    
+
+
+
+
+
+    
+
+/*  Alte if Funktion
+
+    if (x==1)       //Aufgabe 1
+    {
+        if (y==1)
+        {
+            B[8]=1;
+            euler_SI(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn1);
+            //dae_semi_implizit_Index_1(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn1);
+        }else       
+        {
+            B[8]=0;
+            euler_SI(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn2);
+
+            dae_semi_implizit_Index_1(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn2);
+        }
+    }else           //Aufgabe 2 oder 3
+    {
+         if (y==1)
+        {
+            B[8]=1;
+            dae_si_dense_output(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,b.V_r_Max,z,fcn1);
+        }else
+        {
+            B[8]=0;
+            dae_si_dense_output(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,b.V_r_Max,z,fcn2);
+        }
+    }
+    
+    if (x<3)
+    {
+        printf("Aufgabe: 2.1 oder 2.2\n");
+        Z_=calloc((j_t+z_counter),sizeof(double));
+        Matrix_t_c(b.n,x,j_t,z,V_zuflus,Z_,t_1);   
+    }
+    else    //Bei Aufgabe 3… Regelung
+    {
+        printf("Aufgabe: 2.3\n");
+        //neue Startwerte initialisieren    
+        //Übernehme y[1] und y[2], von der letzten Reihe
+        
+        for(int i=0;i<b.n;i++){
+            b.y[i]=z[z_counter-b.n+i];
+            printf("y[%i]=%lf\n",i,b.y[i]);
+        }    
+        b.y[b.n-1]=b.V_zu;  //neuer 
+
+        j_t2=j_t;
+        z_counter_2= z_counter;
+        //printf("z_counter_2:%i\n",z_counter_2);
+        B[8]=0;
+
+        if (y==1)   //Regler Modell 1
+        {
+            dae_si(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn3);
+        }else   //Regler Modell 2
+        //DAE Index 2
+        {
+            dae_si_Schritt(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn4,fcn5);
+            //dae_si(b.n,&j_t,&z_counter,b.h,B,t_1,b.tmax,b.y,z,fcn4);        
+        }
+        V_zuflus=calloc(j_t,sizeof(double));
+        Z_=calloc((2*j_t+z_counter),sizeof(double));
+
+        for(int i=0;i<j_t2;i++){
+            V_zuflus[i]=1;
+        }
+
+        for(int i=0;i<j_t-j_t2;i++){
+            V_zuflus[j_t2 +i]=z[z_counter_2 + i*b.n +2];
+            z[z_counter_2 + i*b.n +2]=z[z_counter_2-1];
+        }
+        Matrix_t_c(b.n,x,j_t,z,V_zuflus,Z_,t_1);
+    }
+    double *NP, *NM, *V_r;
+    NP=calloc(j_t+1,sizeof(double));
+    NM=calloc(j_t+1,sizeof(double));
+    V_r=calloc(j_t+1,sizeof(double));
+
+        for(int i=0;i<j_t+1;i++){
+            NM[i]=Z_[i*(b.n+2)+1];
+            NP[i]=Z_[i*(b.n+2)+2];
+            V_r[i]=Z_[i*(b.n+2)+3];
+        }
+*/
+    //struct gnuplot_arg plot={.grid = 1,.plotTitle="DAE",.length=j_t+1,.inputFile="test.dat"};
+    //char *legende[]={"N_m", "N_p", "V_r"};
+   
+   //char *legende1[]={ "V^+"};
+    //gnuplot_multi_y(plot,legende,legende1,t_1,3,1,NM,NP,V_r,V_zuflus);
+    
+    //gnuplot(plot, legende, t_1,4, NM, NP, V_r);
+    //void gnuplot_multi_y(struct gnuplot_arg arg, char **legend_y1, char **legend_y2, double *x, int num_y1, int num_y2, ...);
+
+    
+    
+    /*
+    char *dateiname;
+    dateiname="ODE_1.txt";
+    writeFile(b.n,x,Z_,j_t,dateiname);
+    system("gnuplot gnuplot_ODE_1.gpl -p");
+    
+    printf("j_t:%i\n",j_t);
+    printf("z_counter:%i\n",z_counter);
+*/
+
+/*
+    free(t_1);
+    free(z);
+    //free(z_2);
+    free(Z_);
+    }*/

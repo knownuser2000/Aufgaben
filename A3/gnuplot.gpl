@@ -1,0 +1,9 @@
+set grid
+set zeroaxis
+set title "Aufgabe 3.1 D_1"
+set xlabel "x Axis"
+set ylabel "y Axis"
+set style data lines 
+set datafile separator "\t" 
+set zeroaxis
+plot "A2_3_1.txt" using 1:2 title " "\
