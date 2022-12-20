@@ -6,6 +6,6 @@ set ylabel "y Axis"
 set style data lines 
 set datafile separator "\t" 
 set zeroaxis
-plot "A2_3_t1.txt" using 1:2 title "D_1"\
-		, '' using 1:3 title "D_2"\
-		, '' using 1:4 title "D_3"\
+plot "A2_3_t1.txt" using 1:2 title " "\
+		, '' using 1:3 title " "\
+		, '' using 1:4 title " "\

@@ -1,15 +1,15 @@
 #include "MyNumerikBib.h"
 #include "gnuplot.h"
 
-double a[3];
+double a[3];    //Koeff für D1
     //Zentraldiff
 void koef_ZD(double D, double delta_x, double v){
 	a[0]=(D/delta_x -v/2)/delta_x;  //u_j_l+1
 	a[1]=-2*D/pow(delta_x,2);         //u_j_l
 	a[2]=(D/delta_x +v/2)/delta_x;  //u_j_l-1
 }; 
-    //Forward differentiaton
 
+    //Forward differentiaton
 void koef_FD(double D, double delta_x, double v){
 	a[0]=(D/delta_x -v)/delta_x;        //u_j_l+1
 	a[1]= (-2*D/delta_x +v)/delta_x;    //u_j_l
@@ -23,6 +23,27 @@ void koef_BD(double D, double delta_x, double v){
 	a[2]=(D/delta_x +v)/delta_x;        //u_j_l-1
 }; 
 
+//Bestimme Peclet Zahl, und entscheide das Diskretisierungsverfahren anhand der Zahl
+void Peclet(double D, double v, double delta_x ){
+     double Pe;
+     Pe=v*delta_x/D;  //Peclet Zahl
+    printf("Pe:%lf\n", Pe);
+        if (fabs(Pe)>1.9)
+    {
+        if (v>0)
+        {
+            koef_BD(D,delta_x,v);
+        }else
+        {
+            koef_FD(D,delta_x,v);
+        }
+    }else
+    {
+        koef_ZD(D, delta_x, v);
+    }
+}
+
+//RB: Direclet für x=0 und x[xmax]=0 werden ignoriert
 void function(int n, double *x, double *f){
     f[0]=x[1]*a[0]+x[0]*a[1];
     for (int i = 1; i < n-1; i++)
@@ -32,111 +53,170 @@ void function(int n, double *x, double *f){
     f[n-1]=x[n-1]*a[1]+x[n-2]*a[2];
 }
 
-void function2(int n, double *x, double *f){
+//RB: Direclet für x=0 und x[xmax]=0 beachtet [funktioniert noch nicht]
+void function3(int n, double *x, double *f){
     f[0]=0;
-    f[1]=x[1]*a[0]+x[0]*a[1];
-    for (int i = 2; i < n-2; i++)
+    for (int i = 1; i < n-1; i++)
     {
        f[i]= x[i+1]*a[0]+ x[i]*a[1]+x[i-1]*a[2];
     }
-    f[n-2]=x[n-2]*a[1]+x[n-3]*a[2];
     f[n-1]=0;
 }
 
-//n=13 By_dot=B*y'
-void koeff_Matrix(int n, double *By_dot){
+//Aufgabe 3. Ignorier
+void function4(int n_x, int n_t, double v, double D, double *x, double *t, double *f){
+double x0=0.5;
+double x_n[n_x];
+double *z;
+z=calloc(n_t*n_x,sizeof(double));
+
+for (int i = 0; i < n_x; i++)
+{
+    x_n[i]=-x0+x[i];
+}
+
+x_n[0]=x[0];            //für u[0] x0=0;
+x_n[n_x-1]=x[n_x-1];    //für u[n_x-1] x0=0;
+
+for (int i = 0; i < n_t; i++)
+{
+    for (int j = 0; j < n_x; j++)
+    {
+        z[i*n_x+j]=x_n[j]-v*t[i];
+        z[i*n_x+j]= -pow(z[i*n_x+j],2)/(4*D*t[i]);
+        z[i*n_x+j]= exp(z[i*n_x+j])/sqrt(4*PI*D*t[i]);
+    }
+}
+}
+
+//Erstellt die Konzentrationsvektoren für die t=10/50/75
+void Vektor_aufgabe_1(int n, double *z, double *l1, double *l2, double *l3){
     for (int i = 0; i < n; i++)
     {
-        for (int j = 0; i < n; j++)
-        {
-            if (i==j-1)
-            {
-                By_dot[i*n+j]=a[2];     //u_j_(l-1) Koeff
-            }
-            else if (i==j)
-            {
-                By_dot[i*n+j]=a[1];     //u_j_(l) Koeff
-            }
-            else if (i==j+1)
-            {
-                By_dot[i*n+j]=a[2];     //u_j_(l-1) Koeff
-            }
-            else{
-                By_dot[i*n+j]=0;
-            }
-        }
+        l1[i]=z[n*(10)+i];
+        l2[i]=z[n*(50)+i];
+        l3[i]=z[n*(75)+i];
     }
-};
+}
+
+void Aufgabe1(int xmax, int tmax, int delta_x, int delta_t, double *t, double *x, double D, double v, double *z){
+    int n_t,n_x;        //Schrittzahl
+    n_t=tmax/delta_t+1; //wegen startwert
+    n_x=xmax/delta_x; 
+    int n=n_x-1;
+    double *B;  //Einheitsmatrix
+    B=calloc((n)*(n),sizeof(double));   
+    for (int i = 0; i <(n); i++)
+    {
+        B[i*(n)+i]=1;
+    }
+    int z_counter=0;
+    int j_t=0;
+    Peclet(D,v,delta_x);
+    euler_SI(n,&j_t,&z_counter,delta_t,B,t,tmax,x,z,function);
+}
+
+void Aufgabe3(){
+    double D[3];
+    D[0]=0.01,D[1]=0.0008,D[2]=0.00005;
+    double v=0.2;
+    double tmax=1,xmax=1;
+    double delta_x=0.04,delta_t=0.02;
+    int n_t,n_x;
+    n_t=tmax/delta_t+1;
+    n_x=xmax/delta_x;
+    int n=n_x-1;
 
 
-//n= anzahl gl, l=zeit-zeile
-void test(int n, int l, double *u, double *D, double delta_x, double n_x, double v){
-    u[l*n]=u[l*n+n]*(D[0]/pow(delta_x,2)-v/(delta_x*2)) -2*u[l*n]/pow(delta_x,2) 
-             + u[l*n-n]*(D[0]/pow(delta_x,2)+v/(delta_x*2));
-    
-    u[l*n+1]=u[l*n+n+1]*(D[1]/pow(delta_x,2)-v/(delta_x*2)) -2*u[l*n+1]/pow(delta_x,2) 
-             + u[l*n-n+1]*(D[1]/pow(delta_x,2)+v/(delta_x*2));
 
-    u[l*n+2]=u[l*n+n+2]*(D[2]/pow(delta_x,2)-v/(delta_x*2)) -2*u[l*n+2]/pow(delta_x,2) 
-             + u[l*n-n+2]*(D[2]/pow(delta_x,2)+v/(delta_x*2));
-};
+}
 
 int main(){
-    int n_t,n_x;
-    double *t, *x;
-    double tmax,xmax;
-    xmax=30,tmax=30;
-    double delta_t,delta_x;
-    delta_t=1, delta_x=1;    
-    n_t=tmax/delta_t;
-    n_x=xmax/delta_x;   
-    int n=n_x-2; 
-    double D=0.5;
-    double v=1;
-    koef_ZD( D, delta_x, v);
+    double v=1,D[3];    //v=geschw. D=Diffussionskonstante
+    D[0]=0.5, D[1]=0.05,D[2]=0.0005;
 
-    t=calloc(n_t,sizeof(double));
-    //Anfangsvektor
+    double tmax=76,xmax=30;
+    double delta_t=1,delta_x=1;
+    int n_t=tmax/delta_t+1;
+    int n_x=xmax/delta_x;        //Schrittzahl
+    //n_x sollte xmax/delta_x +1 sein, weil x=0 und x=xmax
+    int n=n_x-1;
+
+    double *t, *x, *c;      //Zeit-; Orts-; Konzentrationsvektor
+    t=calloc(n_t,sizeof(double));   //Zeitvektor
+    x=calloc(n,sizeof(double));   
+    c=calloc(n,sizeof(double));   //Konzentrationsvektor des ortes
+
+    x[0]=delta_x;
+    c[0]=20; //Anfangsvektor
     t[0]=delta_t;
+
     for (int i = 1; i < n; i++)
+    {
+        x[i]=x[i-1]+delta_x;
+    }
+
+    for (int i = 1; i < n_t; i++)
     {
         t[i]=t[i-1]+delta_t;
     }
     
-    x=calloc(n_x,sizeof(double));
-    x[0]=20; //Anfangsvektor
-
-    double *B;
-    B=calloc((n_x-2)*(n_x-2),sizeof(double));
+    double *z1,*z2,*z3; //Konzentrationsmatrizen für die unterschiedlichen diffussionen
+    z1=calloc((n_x-2)*n_t,sizeof(double));
+    z2=calloc((n_x-2)*n_t,sizeof(double));
+    z3=calloc((n_x-2)*n_t,sizeof(double));
+    double *l1,*l2,*l3,*l4,*l5,*l6,*l7,*l8,*l9;
     
-    for (int i = 0; i <(n_x-2); i++)
-    {
-        B[i*(n_x-2)+i]=1;
-    }
+    //euler_SI(n,&j_t,&z_counter,delta_t,B,t,tmax,x,z1,function);
+    //void Aufgabe1(int xmax, int tmax, int delta_x, int delta_t, double *t, double *x, double D, double v, double *z){
+    Aufgabe1(xmax,tmax,delta_x,delta_t,t,c,D[0],v,z1);
+    l1=calloc(n,sizeof(double));
+    l2=calloc(n,sizeof(double));
+    l3=calloc(n,sizeof(double));
+    Vektor_aufgabe_1(n,z1,l1,l2,l3);
 
-    double *z; 
-    z=calloc((n_x-2)*n_t,sizeof(double));
-    int z_counter=0;
-    int j_t;
+    Aufgabe1(xmax,tmax,delta_x,delta_t,t,c,D[1],v,z2);
+    l4=calloc(n,sizeof(double));
+    l5=calloc(n,sizeof(double));
+    l6=calloc(n,sizeof(double));
+    Vektor_aufgabe_1(n,z2,l4,l5,l6);
 
-    //void euler_SI(int n,int *j_t, int *z_counter,double delta_T, double *B, double *t,double tmax, double *y_i, double *z, void(fcn)(int, double*,double*)){
-    euler_SI(n,&j_t,&z_counter,delta_t,B,t,tmax,x,z,function);
+    Aufgabe1(xmax,tmax,delta_x,delta_t,t,c,D[2],v,z3);
+    l7=calloc(n,sizeof(double));
+    l8=calloc(n,sizeof(double));
+    l9=calloc(n,sizeof(double));
+    Vektor_aufgabe_1(n,z3,l7,l8,l9);
+    
+    char *legende[]={"D_1", "D_2", "D_3"};
+    struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 3.2 t=10",.length=n,.inputFile="A2_3_t1.txt"};
+    gnuplot(plot,legende,x,3,l3,l5,l9);
+
+
+    //euler_SI(n,&j_t,&z_counter,delta_t,B,t,tmax,x,z,function);
+    //euler_SI(n_x,&j_t,&z_counter,delta_t,B,t,tmax,x,z,function);
+
+    
     //		euler_semi_implizit_Schritt(n,delta_T,B,t,y_t,y_t_2,z,fcn);
 
     //Spalte= konzentration
     //Zeile:Zeitpunkt
+    /* 
     double *a_a;
     a_a=calloc(n,sizeof(double));
 
     for (int i = 0; i < n; i++)
     {
         a_a[i]=z[i*n];
-        /* code */
     }
-
-    matrix_trans(n,n,z);
+*/
+    //matrix_trans(n,n,z);
+    /* 
     struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 3.1 D_1",.length=n,.inputFile="A2_3_1.txt"};
     gnuplot_multi_2D_in_3d(plot,t,t,n,z);
+    */
+
+    /* 
     char *test;
     gnuplot(plot,test,x,1,a_a);
+    */
 }

@@ -11,7 +11,7 @@ void gnuplot(struct gnuplot_arg arg, char **legend, double *x, int num, ...)
     if(arg.length <= 0){printf("\t ERROR: False Length!\n"); exit(1);}
     // create standard filename if not provided
     if (arg.inputFile == NULL){arg.inputFile = "inputGnuplot.dat";}
-
+    
     double *y,*arr;
     arr = calloc(arg.length,sizeof(double));
     y = calloc(arg.length*num,sizeof(double));
@@ -33,8 +33,8 @@ void gnuplot(struct gnuplot_arg arg, char **legend, double *x, int num, ...)
     createGnuplotFile(arg, legend, num);
 
     printf("\t Creating Gnuplot!\n");
+
     system("gnuplot gnuplot.gpl -p");
-    //printf("\t Gnuplot created!\n\n");
 
     //free(arr); free(x); free(y);
 }
@@ -60,8 +60,6 @@ void createInputFile(struct gnuplot_arg arg, double *x, int num, double *y)
 	}
 
 	fclose(fd);
-
-    //printf("\t Input file created!\n\n");
 }
 
 void createGnuplotFile(struct gnuplot_arg arg, char **legend, int num)
@@ -69,10 +67,9 @@ void createGnuplotFile(struct gnuplot_arg arg, char **legend, int num)
     printf("\t Creating gnuplot file!\n");
 
     FILE *fd;
-    char fileName[] = "gnuplot.gpl";
-    fd = fopen(fileName, "w");
+    fd = fopen("gnuplot.gpl", "w");
     if (fd == NULL){
-        fprintf(stderr, "Datei %s konnte nicht zum Schreiben (GNu) geöffnet werden!\n", fileName);
+        fprintf(stderr, "Datei %s konnte nicht zum Schreiben (GNu) geöffnet werden!\n", "gnuplot.gpl");
         exit(1);
     }
 
@@ -86,15 +83,23 @@ void createGnuplotFile(struct gnuplot_arg arg, char **legend, int num)
     fprintf(fd, "set datafile separator \"\\t\" \n");
     fprintf(fd, "set zeroaxis\n");
 
-    fprintf(fd, "plot \"%s\" using 1:2 title \"%s\"\\\n", arg.inputFile, 
-            legend[0] != NULL ? legend[0] : " ");
-
-    for(int i=0;i<num-1;i++){
-        fprintf(fd, "\t\t, '' using 1:%i title \"%s\"\\\n", i+3, legend[i+1] != NULL ? legend[i+1] : " ");
+    // checking the legend input
+    if (legend == NULL){
+        fprintf(fd, "plot \"%s\" using 1:2 title \"%s\"\\\n", arg.inputFile, " ");
+        for (int i = 0; i < num - 1; i++){
+            fprintf(fd, "\t\t, '' using 1:%i title \"%s\"\\\n", i + 3, " ");
+        }
+    }else if (legend != NULL){
+        fprintf(fd, "plot \"%s\" using 1:2 title \"%s\"\\\n", arg.inputFile, legend[0]);
+        for (int i = 0; i < num - 1; i++){
+            fprintf(fd, "\t\t, '' using 1:%i title \"%s\"\\\n", i + 3, legend[i + 1]);
+        }
+    }else{
+        printf("\n\t ERROR: Debug legend!\n");
+        exit(1);
     }
 
     fclose(fd);
-    //printf("\t Gnuplot file created!\n\n");
 }
 
 // matrix variant
@@ -107,13 +112,16 @@ void gnuplot_matrix(struct gnuplot_arg arg, char **legend, double *x, int num, d
     if(arg.length <= 0){printf("\t ERROR: False Length!\n"); exit(1);}
     // create standard filename if not provided
     if (arg.inputFile == NULL){arg.inputFile = "inputGnuplot.dat";}
-
-
+   
     createInputFile(arg, x, num, y_matrix);
 
     createGnuplotFile(arg, legend, num);
 
     printf("\t Creating Gnuplot!\n");
+
+    // methode erlaubt beliebige .gpl zu bennnen
+    char s1[] = "gnuplot ";
+    char s2[] = " -p";
     system("gnuplot gnuplot.gpl -p");
 }
 
@@ -159,8 +167,8 @@ void gnuplot_multi_y(struct gnuplot_arg arg, char **legend_y1, char **legend_y2,
     createGnuplotFile_multi_y(arg, legend_y1, legend_y2, num_y1, num_y2);
 
     printf("\t Creating Gnuplot!\n");
-    system("gnuplot gnuplot_multi_y.gpl -p");
-    //printf("\t Gnuplot created!\n\n");
+
+    system("gnuplot gnuplot.gpl -p");
 
     //free(arr); free(x); free(y);
 }
@@ -190,8 +198,8 @@ void createInputFile_multi_y(struct gnuplot_arg arg, int num_y1, int num_y2, dou
         }
         fprintf(fd, "\n");
     }
+
 	fclose(fd);
-    //printf("\t Input file created!\n\n");
 }
 
 void createGnuplotFile_multi_y(struct gnuplot_arg arg, char **legend_y1, char **legend_y2, int num_y1, int num_y2)
@@ -199,10 +207,9 @@ void createGnuplotFile_multi_y(struct gnuplot_arg arg, char **legend_y1, char **
     printf("\t Creating gnuplot file!\n");
 
     FILE *fd;
-    char fileName[] = "gnuplot_multi_y.gpl";
-    fd = fopen(fileName, "w");
+    fd = fopen("gnuplot.gpl", "w");
     if (fd == NULL){
-        fprintf(stderr, "Datei %s konnte nicht zum Schreiben (GNu) geöffnet werden!\n", fileName);
+        fprintf(stderr, "Datei %s konnte nicht zum Schreiben (GNu) geöffnet werden!\n", "gnuplot.gpl");
         exit(1);
     }
 
@@ -218,22 +225,43 @@ void createGnuplotFile_multi_y(struct gnuplot_arg arg, char **legend_y1, char **
     fprintf(fd, "set style data %s \n", arg.linestyle != NULL ? arg.linestyle : "lines");
     fprintf(fd, "set datafile separator \"\\t\" \n");
 
-    // 1 plot
-    fprintf(fd, "plot \"%s\" using 1:2 axis x1y1 title \"%s\"\\\n", arg.inputFile, legend_y1[0] != NULL ? legend_y1[0] : " ");
+    // checking the legend input
+    // y1 plot
+    if (legend_y1 == NULL){
+        // 1 plot
+        fprintf(fd, "plot \"%s\" using 1:2 axis x1y1 title \"%s\"\\\n", arg.inputFile, " ");
+        // every other y1 plot
+        for (int i = 0; i < num_y1 - 1; i++){
+            fprintf(fd, "\t\t, '' using 1:%i axis x1y1 title \"%s\"\\\n", i + 3, " ");
+        }
+    }else if (legend_y1 != NULL){
+        fprintf(fd, "plot \"%s\" using 1:2 axis x1y1 title \"%s\"\\\n", arg.inputFile, legend_y1[0]);
 
-    // every other y1 plot
-    for(int i=0; i < num_y1-1; i++)
-    {
-        fprintf(fd, "\t\t, '' using 1:%i axis x1y1 title \"%s\"\\\n", i+3, legend_y1[i+1] != NULL ? legend_y1[i+1] : " ");
+        // every other y1 plot
+        for (int i = 0; i < num_y1 - 1; i++){
+            fprintf(fd, "\t\t, '' using 1:%i axis x1y1 title \"%s\"\\\n", i + 3, legend_y1[i + 1]);
+        }
+    }else{
+        printf("\n\t ERROR: Debug legend!\n");
+        exit(1);
     }
-    // y2 plot
-    for(int i=0; i < num_y2; i++)
-    {
-        fprintf(fd, "\t\t, '' using 1:%i axis x1y2 title \"%s\"\\\n", i+num_y1+2, legend_y2[i] != NULL ? legend_y2[i] : " ");
+
+    //y2 plot
+    if (legend_y2 == NULL){
+        for (int i = 0; i < num_y2; i++){
+            fprintf(fd, "\t\t, '' using 1:%i axis x1y2 title \"%s\"\\\n", i + num_y1 + 2, " ");
+        }
+    }
+    else if (legend_y2 != NULL){
+        for (int i = 0; i < num_y2; i++){
+            fprintf(fd, "\t\t, '' using 1:%i axis x1y2 title \"%s\"\\\n", i + num_y1 + 2, legend_y2[i]);
+        }
+    }else{
+        printf("\n\t ERROR: Debug legend!\n");
+        exit(1);
     }
 
     fclose(fd);
-    //printf("\t Gnuplot file created!\n\n");
 }
 
 void gnuplot_multi_2D_in_3d(struct gnuplot_arg arg, double *x, double *y, int num, double *z_matrix)
@@ -245,13 +273,14 @@ void gnuplot_multi_2D_in_3d(struct gnuplot_arg arg, double *x, double *y, int nu
     if(arg.length <= 0){printf("\t ERROR: False Length!\n"); exit(1);}
     // create standard filename if not provided
     if (arg.inputFile == NULL){arg.inputFile = "inputGnuplot.dat";}
-
+    
     createInputFile_multi_2D_in_3d(arg, x, num, z_matrix);
 
     createGnuplotFile_multi_2D_in_3d(arg, y, num);
 
     printf("\t Creating Gnuplot!\n");
-    system("gnuplot \"gnuplot_multi_2D_in_3D.gpl\" -persist");
+
+    system("gnuplot gnuplot.gpl -p");
 }
 
 void createInputFile_multi_2D_in_3d(struct gnuplot_arg arg, double *x, int num, double *z_matrix)
@@ -282,10 +311,9 @@ void createGnuplotFile_multi_2D_in_3d(struct gnuplot_arg arg, double *y, int num
     printf("\t Creating gnuplot file!\n");
 
     FILE *fd;
-    char fileName[] = "gnuplot_multi_2D_in_3D.gpl";
-    fd = fopen(fileName, "w");
+    fd = fopen("gnuplot.gpl", "w");
     if (fd == NULL){
-        fprintf(stderr, "Datei %s konnte nicht zum Schreiben (GNu) geöffnet werden!\n", fileName);
+        fprintf(stderr, "Datei %s konnte nicht zum Schreiben (GNu) geöffnet werden!\n", "gnuplot.gpl");
         exit(1);
     }
 

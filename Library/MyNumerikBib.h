@@ -13,6 +13,7 @@
 # define TOL  1.0E-12
 # define MIN_STEPSIZE  1.0E-8
 # define ZERO  0.0
+#define PI 3.142857
 
 
 
