@@ -102,18 +102,19 @@ void Vektor_aufgabe_1(int n, double *z, double *l1, double *l2, double *l3){
 void Aufgabe1(int xmax, int tmax, int delta_x, int delta_t, double *t, double *x, double D, double v, double *z){
     int n_t,n_x;        //Schrittzahl
     n_t=tmax/delta_t+1; //wegen startwert
-    n_x=xmax/delta_x; 
-    int n=n_x-1;
+    n_x=xmax/delta_x+1; 
+    int n=n_x;
     double *B;  //Einheitsmatrix
     B=calloc((n)*(n),sizeof(double));   
     for (int i = 0; i <(n); i++)
     {
         B[i*(n)+i]=1;
     }
+    //B[0]=0,B[n*n-1]=0;
     int z_counter=0;
     int j_t=0;
     Peclet(D,v,delta_x);
-    euler_SI(n,&j_t,&z_counter,delta_t,B,t,tmax,x,z,function);
+    euler_SI(n,&j_t,&z_counter,delta_t,B,t,tmax,x,z,function3);
 }
 
 void Aufgabe3(){
@@ -124,11 +125,11 @@ void Aufgabe3(){
     double delta_x=0.04,delta_t=0.02;
     int n_t,n_x;
     n_t=tmax/delta_t+1;
-    n_x=xmax/delta_x;
-    int n=n_x-1;
+    n_x=xmax/delta_x+1;
+    int n=n_x;
 
-
-
+    Peclet(D[0],v,delta_x);
+    
 }
 
 int main(){
@@ -138,18 +139,18 @@ int main(){
     double tmax=76,xmax=30;
     double delta_t=1,delta_x=1;
     int n_t=tmax/delta_t+1;
-    int n_x=xmax/delta_x;        //Schrittzahl
+    int n_x=xmax/delta_x+1;        //Schrittzahl
     //n_x sollte xmax/delta_x +1 sein, weil x=0 und x=xmax
-    int n=n_x-1;
+    int n=n_x;
 
     double *t, *x, *c;      //Zeit-; Orts-; Konzentrationsvektor
     t=calloc(n_t,sizeof(double));   //Zeitvektor
     x=calloc(n,sizeof(double));   
     c=calloc(n,sizeof(double));   //Konzentrationsvektor des ortes
 
-    x[0]=delta_x;
-    c[0]=20; //Anfangsvektor
-    t[0]=delta_t;
+    //x[0]=delta_x;
+    c[1]=20; //Anfangsvektor
+    //t[0]=delta_t;
 
     for (int i = 1; i < n; i++)
     {
@@ -162,9 +163,9 @@ int main(){
     }
     
     double *z1,*z2,*z3; //Konzentrationsmatrizen für die unterschiedlichen diffussionen
-    z1=calloc((n_x-2)*n_t,sizeof(double));
-    z2=calloc((n_x-2)*n_t,sizeof(double));
-    z3=calloc((n_x-2)*n_t,sizeof(double));
+    z1=calloc((n)*n_t,sizeof(double));
+    z2=calloc((n)*n_t,sizeof(double));
+    z3=calloc((n)*n_t,sizeof(double));
     double *l1,*l2,*l3,*l4,*l5,*l6,*l7,*l8,*l9;
     
     //euler_SI(n,&j_t,&z_counter,delta_t,B,t,tmax,x,z1,function);
@@ -188,27 +189,20 @@ int main(){
     Vektor_aufgabe_1(n,z3,l7,l8,l9);
     
     char *legende[]={"D_1", "D_2", "D_3"};
-    struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 3.2 t=10",.length=n,.inputFile="A2_3_t1.txt"};
-    gnuplot(plot,legende,x,3,l3,l5,l9);
+    struct gnuplot_arg plot1={.grid = 1,.plotTitle="Aufgabe 3.2 t=10",.length=n,.inputFile="A2_3_t1.txt"};
+    struct gnuplot_arg plot2={.grid = 1,.plotTitle="Aufgabe 3.2 t=50",.length=n,.inputFile="A2_3_t2.txt"};
+    struct gnuplot_arg plot3={.grid = 1,.plotTitle="Aufgabe 3.2 t=75",.length=n,.inputFile="A2_3_t3.txt"};
+
+    gnuplot(plot1,legende,x,3,l1,l4,l7);
+    gnuplot(plot2,legende,x,3,l2,l5,l8);
+    gnuplot(plot3,legende,x,3,l3,l6,l9);
 
 
     //euler_SI(n,&j_t,&z_counter,delta_t,B,t,tmax,x,z,function);
     //euler_SI(n_x,&j_t,&z_counter,delta_t,B,t,tmax,x,z,function);
 
-    
     //		euler_semi_implizit_Schritt(n,delta_T,B,t,y_t,y_t_2,z,fcn);
 
-    //Spalte= konzentration
-    //Zeile:Zeitpunkt
-    /* 
-    double *a_a;
-    a_a=calloc(n,sizeof(double));
-
-    for (int i = 0; i < n; i++)
-    {
-        a_a[i]=z[i*n];
-    }
-*/
     //matrix_trans(n,n,z);
     /* 
     struct gnuplot_arg plot={.grid = 1,.plotTitle="Aufgabe 3.1 D_1",.length=n,.inputFile="A2_3_1.txt"};

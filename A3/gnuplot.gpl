@@ -1,11 +1,11 @@
 set grid
 set zeroaxis
-set title "Aufgabe 3.2 t=10"
+set title "Aufgabe 3.2 t=75"
 set xlabel "x Axis"
 set ylabel "y Axis"
 set style data lines 
 set datafile separator "\t" 
 set zeroaxis
-plot "A2_3_t1.txt" using 1:2 title "D_1"\
+plot "A2_3_t3.txt" using 1:2 title "D_1"\
 		, '' using 1:3 title "D_2"\
 		, '' using 1:4 title "D_3"\
